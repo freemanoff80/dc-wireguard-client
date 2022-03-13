@@ -1,7 +1,6 @@
 version: '3'
 
 services:
-
     ubuntu-server:
         container_name: dc-wireguard-clt
         restart: unless-stopped
@@ -20,7 +19,6 @@ services:
                 #ADD_USER_NAME: adminus
                 #ADD_USER_PASSWORD: changeme
                 #ADD_USER_SUDO: "yes"
-
         volumes:
             - /etc/localtime:/etc/localtime:ro
             - /lib/modules:/lib/modules:ro
