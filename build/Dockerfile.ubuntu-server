@@ -1,0 +1,86 @@
+ARG IMAGE_VERSION
+FROM ubuntu:${IMAGE_VERSION}
+
+#ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Moscow 
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+USER root
+
+# Args For Users Settings
+ARG ROOT_USER_PASSWORD
+
+ARG ADD_USER_NAME
+ARG ADD_USER_PASSWORD
+ARG ADD_USER_SUDO
+
+### Update OS
+RUN apt-get -y update && apt-get -y upgrade
+
+### Install Packages
+RUN apt-get -y install \
+bind9-dnsutils \
+vim \
+less \
+net-tools \
+iputils-ping \
+iproute2 \
+traceroute \
+netcat \
+sudo \
+openssh-server \
+iptables \
+ifupdown \
+wireguard \
+openresolv \
+squid \
+curl \
+lynx \
+htop \
+build-essential \
+linux-headers-$(uname -r) \
+supervisor
+
+### Settings For Root User 
+RUN if [ -z "${ROOT_USER_PASSWORD}" ]; then \
+        echo ROOT_USER_PASSWORD is EMPTY; \
+    else \
+        echo root:${ROOT_USER_PASSWORD} |chpasswd && \
+        echo "PermitRootLogin yes" >> /etc/ssh/sshd_config; \
+    fi
+
+### Settings For Additional User
+RUN if [ -z "${ADD_USER_NAME}" ]; then \
+        echo ADD_USER_NAME is EMPTY; \
+    else \
+        if [ ${ADD_USER_SUDO} ]; then \
+            useradd -G sudo -s /bin/bash -m ${ADD_USER_NAME}; \
+        else \
+            useradd -s /bin/bash -m ${ADD_USER_NAME}; \
+        fi; \
+        echo ${ADD_USER_NAME}:${ADD_USER_PASSWORD} |chpasswd; \
+    fi
+
+
+### Setting For Service SSH
+RUN echo "PasswordAuthentication yes\nPort 2222" >> /etc/ssh/sshd_config
+
+
+### Copy Settins Files For Services
+COPY copyfiles/supervisord.conf /etc/supervisor/supervisord.conf
+COPY copyfiles/10-wireguard.conf /etc/sysctl.d/10-wireguard.conf
+
+### Settings For Squid
+RUN cp /etc/squid/squid.conf /etc/squid/squid.conf.orig_bk
+RUN sed -i 's/^http_access deny all/http_access allow all/' /etc/squid/squid.conf
+
+### Start Services
+RUN service ssh start
+RUN service squid start
+
+### Expose Port For SSH Service
+EXPOSE 2222
+EXPOSE 3128
+
+# Running SSH Service Demon
+CMD ["/usr/bin/supervisord"]

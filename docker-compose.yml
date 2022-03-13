@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+
+    ubuntu-server:
+        container_name: dc-wireguard-clt
+        restart: unless-stopped
+        hostname: dc-wireguard-clt
+        cap_add:
+            - NET_ADMIN
+            - SYS_MODULE
+        build:
+            context: ./build
+            dockerfile: Dockerfile.ubuntu-server
+            args:
+                IMAGE_VERSION: latest
+                ### If need root access, set a password
+                ROOT_USER_PASSWORD: changeme
+                ### If need to add another user, set the parameters
+                #ADD_USER_NAME: adminus
+                #ADD_USER_PASSWORD: changeme
+                #ADD_USER_SUDO: "yes"
+
+        volumes:
+            - /etc/localtime:/etc/localtime:ro
+            - /lib/modules:/lib/modules:ro
+            - ./data-wireguard-client:/etc/wireguard/
+            - data-etc-squid:/etc/squid/
+        networks:
+            - dc-ub-srv
+        ports:
+            - 42022:2222
+            - 42088:3128
+
+volumes:
+  data-etc-squid:
+    driver: local
+    driver_opts:
+      type: "none"
+      o: "bind"
+      device: "./data-squid"
+
+networks:
+    dc-ub-srv:
+        name: dc-ub-srv
+        ipam:
+            driver: default
+            ### If need set special IP Net Address
+            #config:
+            #    - subnet: 172.16.1.0/24
